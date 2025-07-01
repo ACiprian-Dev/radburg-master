@@ -7,6 +7,13 @@
     "test": "echo \"Error: no test specified\"",
     "prepare": "husky install"
   },
+  "lint-staged": {
+    "*.{js,ts,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,yml,md}": "prettier --write"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
