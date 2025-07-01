@@ -15,8 +15,8 @@ importers:
         specifier: ^2.32.0
         version: 2.32.0(eslint@9.30.0(jiti@2.4.2))
       husky:
-        specifier: ^9.1.7
-        version: 9.1.7
+        specifier: ^8.0.3
+        version: 8.0.3
       lint-staged:
         specifier: ^16.1.2
         version: 16.1.2
@@ -2547,9 +2547,9 @@ packages:
   https-browserify@1.0.0:
     resolution: {integrity: sha512-J+FkSdyD+0mA0N+81tMotaRMfSL9SGi+xpD3T6YApKsc3bGSXJlfXri3VyFOeYkfLRQisDk1W+jIFFKBeUBbBg==}
 
-  husky@9.1.7:
-    resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
-    engines: {node: '>=18'}
+  husky@8.0.3:
+    resolution: {integrity: sha512-+dQSyqPh4x1hlO1swXBiNb2HzTDN1I2IGLQx1GrBuiqFJfoMrnZWwVmatvSiO+Iz8fBUnf+lekwNo4c2LlXItg==}
+    engines: {node: '>=14'}
     hasBin: true
 
   iconv-lite@0.4.24:
@@ -5334,7 +5334,9 @@ snapshots:
       source-map: 0.6.1
       string-length: 2.0.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@jest/source-map@24.9.0':
     dependencies:
@@ -7980,7 +7982,7 @@ snapshots:
 
   https-browserify@1.0.0: {}
 
-  husky@9.1.7: {}
+  husky@8.0.3: {}
 
   iconv-lite@0.4.24:
     dependencies:
