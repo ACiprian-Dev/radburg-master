@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\"",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx}": [
@@ -20,10 +22,18 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
+    "@typescript-eslint/eslint-plugin": "^8.35.1",
+    "@typescript-eslint/parser": "^8.35.1",
     "eslint": "^9.30.0",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "husky": "^8.0.3",
     "lint-staged": "^16.1.2",
-    "prettier": "^1.19.1"
+    "prettier": "^3.6.2"
+  },
+  "packageManager": "pnpm@10.12.4",
+  "dependencies": {
+    "typescript-eslint": "^8.35.1"
   }
 }
