@@ -1,0 +1,20 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        {
+          image: postgres:16-alpine,
+          ports: ["5432:5432"],
+          env: { POSTGRES_PASSWORD: tyres },
+        }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with: { version: 8 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test
