@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model brand {
+  id      Int       @id @default(autoincrement())
+  name    String    @unique
+  model   model[]
+  product product[]
+}
+
+model dimension {
+  id            Int             @id @default(autoincrement())
+  width_mm      Decimal         @db.Decimal(4, 1)
+  height_pct    Int?
+  rim_diam_in   Decimal         @db.Decimal(4, 1)
+  product_tyres product_tyres[]
+
+  @@unique([width_mm, height_pct, rim_diam_in])
+}
+
+model model {
+  id       Int       @id @default(autoincrement())
+  brand_id Int?
+  name     String
+  brand    brand?    @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product  product[]
+
+  @@unique([brand_id, name])
+}
+
+model offer {
+  id                                                          BigInt             @id @default(autoincrement())
+  product_id                                                  BigInt?
+  seller_id                                                   Int?
+  sku_external                                                String
+  price_numeric                                               Decimal            @db.Decimal(10, 2)
+  currency                                                    String?            @default("RON") @db.Char(3)
+  stock                                                       Int
+  lead_time_days                                              Int?
+  is_active                                                   Boolean?           @default(true)
+  updated_at                                                  DateTime?          @default(now()) @db.Timestamptz(6)
+  product                                                     product?           @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seller                                                      seller?            @relation(fields: [seller_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  offer_tyres                                                 offer_tyres?
+  sales_order_item_sales_order_item_seller_id_offer_idTooffer sales_order_item[] @relation("sales_order_item_seller_id_offer_idTooffer")
+  sales_order_item_sales_order_item_offer_idTooffer           sales_order_item[] @relation("sales_order_item_offer_idTooffer")
+
+  @@unique([seller_id, id], map: "offer_seller_id_id_uidx")
+  @@unique([seller_id, sku_external, product_id])
+  @@index([price_numeric], map: "offer_price_idx")
+  @@index([product_id], map: "offer_product_idx")
+}
+
+model offer_tyres {
+  offer_id      BigInt   @id
+  min_depth_mm  Decimal? @db.Decimal(3, 1)
+  quality_grade String?
+  offer         offer    @relation(fields: [offer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model product {
+  id                                                          BigInt               @id @default(autoincrement())
+  product_type                                                product_type_enum
+  brand_id                                                    Int?
+  model_id                                                    Int?
+  slug                                                        String               @unique
+  created_at                                                  DateTime?            @default(now()) @db.Timestamptz(6)
+  offer                                                       offer[]
+  brand                                                       brand?               @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  model                                                       model?               @relation(fields: [model_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product_fullwheels_product_fullwheels_product_idToproduct   product_fullwheels?  @relation("product_fullwheels_product_idToproduct")
+  product_fullwheels_product_fullwheels_rim_productToproduct  product_fullwheels[] @relation("product_fullwheels_rim_productToproduct")
+  product_fullwheels_product_fullwheels_tyre_productToproduct product_fullwheels[] @relation("product_fullwheels_tyre_productToproduct")
+  product_rims                                                product_rims?
+  product_tyres                                               product_tyres?
+  slug_history                                                slug_history[]
+}
+
+model product_fullwheels {
+  product_id                                       BigInt   @id
+  tyre_product                                     BigInt?
+  rim_product                                      BigInt?
+  product_product_fullwheels_product_idToproduct   product  @relation("product_fullwheels_product_idToproduct", fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product_product_fullwheels_rim_productToproduct  product? @relation("product_fullwheels_rim_productToproduct", fields: [rim_product], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product_product_fullwheels_tyre_productToproduct product? @relation("product_fullwheels_tyre_productToproduct", fields: [tyre_product], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model product_raw {
+  id         BigInt    @id @default(autoincrement())
+  payload    Json
+  source     String
+  fetched_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([source], map: "product_raw_src_idx")
+}
+
+model product_rims {
+  product_id     BigInt   @id
+  diameter_in    Decimal? @db.Decimal(4, 1)
+  width_in       Decimal? @db.Decimal(3, 1)
+  pcd            String?
+  et_offset_mm   Int?
+  center_bore_mm Decimal? @db.Decimal(4, 1)
+  product        product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model product_tyres {
+  product_id   BigInt     @id
+  dimension_id Int?
+  season_id    Int?
+  dot_year     Int?
+  load_index   Int?
+  speed_index  String?
+  depth_bucket Int?
+  dimension    dimension? @relation(fields: [dimension_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product      product    @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  season       season?    @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([dimension_id, dot_year, depth_bucket, season_id, product_id], map: "uq_product_tyre_natural")
+}
+
+model sales_order {
+  id               BigInt             @id @default(autoincrement())
+  user_id          BigInt?
+  status           String?            @default("NEW")
+  total_gross      Decimal?           @db.Decimal(12, 2)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  sales_order_item sales_order_item[]
+}
+
+model sales_order_item {
+  id                                               BigInt       @id @default(autoincrement())
+  order_id                                         BigInt?
+  offer_id                                         BigInt?
+  seller_id                                        Int
+  qty                                              Int
+  unit_price                                       Decimal?     @db.Decimal(10, 2)
+  commission_snapshot                              Decimal?     @db.Decimal(10, 2)
+  offer_sales_order_item_seller_id_offer_idTooffer offer?       @relation("sales_order_item_seller_id_offer_idTooffer", fields: [seller_id, offer_id], references: [seller_id, id], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_seller_match")
+  offer_sales_order_item_offer_idTooffer           offer?       @relation("sales_order_item_offer_idTooffer", fields: [offer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sales_order                                      sales_order? @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model season {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique
+  product_tyres product_tyres[]
+}
+
+model seller {
+  id             Int       @id @default(autoincrement())
+  name           String    @unique
+  vat_code       String?
+  commission_pct Decimal?  @default(10.00) @db.Decimal(5, 2)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  offer          offer[]
+}
+
+model slug_history {
+  old_slug   String    @id
+  product_id BigInt?
+  changed_at DateTime? @default(now()) @db.Timestamptz(6)
+  product    product?  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sys_setting {
+  key String @id
+  val String
+}
+
+enum product_type_enum {
+  TYRE
+  RIM
+  FULLWHEEL
+}
