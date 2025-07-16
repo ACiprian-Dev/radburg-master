@@ -1,12 +1,10 @@
 import { Module } from "@nestjs/common";
 
-import { CatalogService } from "./catalog.service";
-import { CatalogController } from "./catalog.controller";
+import { LookupModule } from "./lookup/lookup.module";
 
 @Module({
-  providers: [CatalogService],
-  exports: [CatalogService],
-  controllers: [CatalogController],
+  imports: [LookupModule],
+  exports: [LookupModule],
 })
 export class CatalogModule {
   // This module currently does not provide any services or exports.
