@@ -1,6 +1,12 @@
 -- CreateEnum
 CREATE TYPE "product_type_enum" AS ENUM ('TYRE', 'RIM', 'FULLWHEEL');
 
+-- CreateEnum
+CREATE TYPE "EuLabelClass" AS ENUM ('A', 'B', 'C', 'D', 'E');
+
+-- CreateEnum
+CREATE TYPE "QualityGrade" AS ENUM ('I', 'II', 'III', 'REMOLD');
+
 -- CreateTable
 CREATE TABLE "brand" (
     "id" SERIAL NOT NULL,
@@ -61,6 +67,12 @@ CREATE TABLE "product" (
     "model_id" INTEGER,
     "slug" TEXT NOT NULL,
     "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "title" TEXT NOT NULL,
+    "main_image_url" TEXT,
+    "is_visible" BOOLEAN NOT NULL DEFAULT true,
+    "ean" TEXT,
+    "group_sku" TEXT,
+    "order_rank" INTEGER DEFAULT 0,
 
     CONSTRAINT "product_pkey" PRIMARY KEY ("id")
 );
@@ -105,6 +117,11 @@ CREATE TABLE "product_tyres" (
     "load_index" INTEGER,
     "speed_index" TEXT,
     "depth_bucket" INTEGER,
+    "eff_class" "EuLabelClass",
+    "grip_class" "EuLabelClass",
+    "eu_noise_db" INTEGER,
+    "eu_noise_class" INTEGER,
+    "quality_grade" "QualityGrade",
 
     CONSTRAINT "product_tyres_pkey" PRIMARY KEY ("product_id")
 );
@@ -169,6 +186,42 @@ CREATE TABLE "sys_setting" (
     CONSTRAINT "sys_setting_pkey" PRIMARY KEY ("key")
 );
 
+-- CreateTable
+CREATE TABLE "tag" (
+    "id" SERIAL NOT NULL,
+    "value" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+
+    CONSTRAINT "tag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "partner_tier" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+
+    CONSTRAINT "partner_tier_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "product_tag" (
+    "product_id" BIGINT NOT NULL,
+    "tag_id" INTEGER NOT NULL,
+
+    CONSTRAINT "product_tag_pkey" PRIMARY KEY ("product_id","tag_id")
+);
+
+-- CreateTable
+CREATE TABLE "partner_price" (
+    "offer_id" BIGINT NOT NULL,
+    "partner_tier_id" INTEGER NOT NULL,
+    "price_numeric" DECIMAL(10,2) NOT NULL,
+    "discount_pct" INTEGER,
+
+    CONSTRAINT "partner_price_pkey" PRIMARY KEY ("offer_id","partner_tier_id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "brand_name_key" ON "brand"("name");
 
@@ -194,6 +247,9 @@ CREATE UNIQUE INDEX "offer_seller_id_sku_external_product_id_key" ON "offer"("se
 CREATE UNIQUE INDEX "product_slug_key" ON "product"("slug");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "product_ean_key" ON "product"("ean");
+
+-- CreateIndex
 CREATE INDEX "product_raw_src_idx" ON "product_raw"("source");
 
 -- CreateIndex
@@ -204,6 +260,15 @@ CREATE UNIQUE INDEX "season_name_key" ON "season"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "seller_name_key" ON "seller"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tag_slug_key" ON "tag"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "partner_tier_name_key" ON "partner_tier"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "partner_tier_slug_key" ON "partner_tier"("slug");
 
 -- AddForeignKey
 ALTER TABLE "model" ADD CONSTRAINT "model_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brand"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -256,3 +321,14 @@ ALTER TABLE "sales_order_item" ADD CONSTRAINT "sales_order_item_order_id_fkey" F
 -- AddForeignKey
 ALTER TABLE "slug_history" ADD CONSTRAINT "slug_history_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "product"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
 
+-- AddForeignKey
+ALTER TABLE "product_tag" ADD CONSTRAINT "product_tag_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_tag" ADD CONSTRAINT "product_tag_tag_id_fkey" FOREIGN KEY ("tag_id") REFERENCES "tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "partner_price" ADD CONSTRAINT "partner_price_offer_id_fkey" FOREIGN KEY ("offer_id") REFERENCES "offer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "partner_price" ADD CONSTRAINT "partner_price_partner_tier_id_fkey" FOREIGN KEY ("partner_tier_id") REFERENCES "partner_tier"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

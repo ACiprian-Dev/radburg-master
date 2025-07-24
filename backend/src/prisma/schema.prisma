@@ -50,6 +50,7 @@ model offer {
   offer_tyres                                                 offer_tyres?
   sales_order_item_sales_order_item_seller_id_offer_idTooffer sales_order_item[] @relation("sales_order_item_seller_id_offer_idTooffer")
   sales_order_item_sales_order_item_offer_idTooffer           sales_order_item[] @relation("sales_order_item_offer_idTooffer")
+  partner_price                                               partner_price[]
 
   @@unique([seller_id, id], map: "offer_seller_id_id_uidx")
   @@unique([seller_id, sku_external, product_id])
@@ -62,6 +63,8 @@ model offer_tyres {
   min_depth_mm  Decimal? @db.Decimal(3, 1)
   quality_grade String?
   offer         offer    @relation(fields: [offer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([offer_id, min_depth_mm, quality_grade], map: "uq_offer_tyres_natural")
 }
 
 model product {
@@ -80,6 +83,15 @@ model product {
   product_rims                                                product_rims?
   product_tyres                                               product_tyres?
   slug_history                                                slug_history[]
+  title                                                       String
+  main_image_url                                              String?
+  is_visible                                                  Boolean              @default(true)
+  ean                                                         String?              @unique
+  group_sku                                                   String?
+  order_rank                                                  Int?                 @default(0)
+
+  // relations
+  tags product_tag[]
 }
 
 model product_fullwheels {
@@ -122,6 +134,14 @@ model product_tyres {
   dimension    dimension? @relation(fields: [dimension_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   product      product    @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   season       season?    @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // EU-label
+  eu_efficiency_class EuLabelClass? @map("eff_class") // A–E
+  eu_wet_grip_class   EuLabelClass? @map("grip_class") // A–E
+  eu_noise_db         Int?
+  eu_noise_class      Int? // 1–3
+
+  quality_grade QualityGrade? // I, II …
 
   @@unique([dimension_id, dot_year, depth_bucket, season_id, product_id], map: "uq_product_tyre_natural")
 }
@@ -179,4 +199,58 @@ enum product_type_enum {
   TYRE
   RIM
   FULLWHEEL
+}
+
+/// ---------- 1. Look-ups ----------
+model tag {
+  id       Int           @id @default(autoincrement())
+  value    String
+  slug     String        @unique
+  products product_tag[]
+}
+
+model partner_tier {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  slug           String          @unique
+  partner_prices partner_price[]
+}
+
+/// ---------- 2. Bridges ----------
+model product_tag {
+  product_id BigInt
+  tag_id     Int
+  product    product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  tag        tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@id([product_id, tag_id])
+}
+
+/// ---------- 4. Partner-specific price (optional until Phase 3A) ----------
+model partner_price {
+  offer_id        BigInt
+  partner_tier_id Int
+  price_numeric   Decimal @db.Decimal(10, 2)
+  discount_pct    Int? // e.g. 5 = 5 %
+
+  offer        offer        @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+  partner_tier partner_tier @relation(fields: [partner_tier_id], references: [id])
+
+  @@id([offer_id, partner_tier_id])
+}
+
+/// ---------- 5. Enums ----------
+enum EuLabelClass {
+  A
+  B
+  C
+  D
+  E
+}
+
+enum QualityGrade {
+  I
+  II
+  III
+  REMOLD
 }

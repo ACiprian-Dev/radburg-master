@@ -17,6 +17,33 @@ export class LookupController {
     return this.lookupService.findTyreDimensions();
   }
 
+  @Get("tyre-widths")
+  @ApiOkResponse({
+    description: "Returns a list of distinct tyre widths.",
+    type: Array,
+  })
+  findTyreWidths() {
+    return this.lookupService.findTyreWidths();
+  }
+
+  @Get("tyre-heights")
+  @ApiOkResponse({
+    description: "Returns a list of distinct tyre heights.",
+    type: Array,
+  })
+  findTyreHeights() {
+    return this.lookupService.findTyreHeights();
+  }
+
+  @Get("tyre-rim-diameters")
+  @ApiOkResponse({
+    description: "Returns a list of distinct tyre rim diameters.",
+    type: Array,
+  })
+  findTyreRimDiameter() {
+    return this.lookupService.findTyreRimDiameter();
+  }
+
   @Get("seasons")
   @ApiOkResponse({
     description: "Returns a list of tyre seasons.",
