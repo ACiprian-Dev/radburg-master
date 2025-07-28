@@ -1,7 +1,8 @@
 // src/modules/catalog/tyres/tyres.service.ts
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { Prisma } from "@prisma/client"; // ← enum access
+import { tyreMap } from "src/lib/utils/tyre-map"; // Import the tyre map
 
 import { ListTyresDto } from "../dto/list-tyres.dto";
 
@@ -12,6 +13,7 @@ export class TyresService {
   async list(dto: ListTyresDto) {
     const {
       q,
+      type,
       size,
       season,
       brand,
@@ -24,6 +26,7 @@ export class TyresService {
     const tyresFilter: Prisma.product_tyresWhereInput = {
       ...(size && { dimension: { slug: size } }),
       ...(season && { season: { slug: season } }),
+      ...(type && { tyre_type: tyreMap[type] }), // Use the tyreMap to convert type
     };
 
     const where: Prisma.productWhereInput = {
@@ -77,20 +80,46 @@ export class TyresService {
     };
   }
 
+  /** PDP query – one SQL call, throws 404 if slug unknown */
   async bySlug(slug: string) {
-    return this.prisma.product.findUniqueOrThrow({
-      where: { slug },
-      include: {
-        brand: true,
-        model: true,
-        tags: { select: { tag: true } },
-        product_tyres: true,
-        offer: {
-          // plural
-          include: { offer_tyres: true },
-          orderBy: { price_numeric: "asc" },
+    try {
+      return await this.prisma.product.findUniqueOrThrow({
+        where: { slug },
+        include: {
+          brand: { select: { name: true, slug: true } },
+          model: { select: { name: true, slug: true } },
+
+          product_tyres: {
+            include: {
+              dimension: true,
+              season: true,
+            },
+          },
+
+          /*  long-form marketing copy stored locally;
+              if you later sync from Strapi the table name stays the same */
+          product_copy: true,
+
+          /*  ALL commercial rows for the SKU, cheapest first  */
+          offer: {
+            include: {
+              offer_tyres: true, // depth_mm, quality_grade
+              offer_meta: true, // warehouse, promo, b2b_only …
+              partner_price: {
+                // every partner tier for that offer
+                include: { partner_tier: true },
+              },
+            },
+            orderBy: { price_numeric: "asc" },
+          },
+
+          tags: { select: { tag: { select: { value: true, slug: true } } } },
+
+          _count: { select: { offer: true } },
         },
-      },
-    });
+      });
+    } catch {
+      throw new NotFoundException(`Tyre with slug “${slug}” not found`);
+    }
   }
 }
