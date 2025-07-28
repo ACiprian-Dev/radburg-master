@@ -3,7 +3,7 @@ import { ApiTags, ApiOkResponse } from "@nestjs/swagger";
 
 import { LookupService } from "./lookup.service";
 
-@ApiTags("catalog ")
+@ApiTags("catalog/lookup")
 @Controller("catalog/lookup")
 export class LookupController {
   constructor(private readonly lookupService: LookupService) {}

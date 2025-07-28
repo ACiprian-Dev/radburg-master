@@ -65,14 +65,18 @@ async function idFor(
   if (cache[table].has(key)) return cache[table].get(key)!;
 
   /* tag: conflict handled on slug ----------------------- */
-  if (table === "tag") {
-    const { value, slug } = cols;
+  if ("slug" in cols) {
     const row = await t.one(
-      `INSERT INTO tag (value, slug)
-         VALUES ($1,$2)
-         ON CONFLICT (slug) DO UPDATE SET value = EXCLUDED.value
-         RETURNING id`,
-      [value, slug],
+      `INSERT INTO ${table} (${Object.keys(cols).join(",")})
+        VALUES (${Object.keys(cols)
+          .map((_, i) => "$" + (i + 1))
+          .join(",")})
+        ON CONFLICT (slug) DO UPDATE SET ${Object.keys(cols)
+          .filter((k) => k !== "slug")
+          .map((k) => `${k}=EXCLUDED.${k}`)
+          .join(",")}
+        RETURNING id`,
+      Object.values(cols),
     );
     cache[table].set(key, row.id);
     return row.id;
@@ -186,22 +190,42 @@ async function flush(raw: any[], src: any[], bucketOf: (d: number) => number) {
     const pTags: any[] = [];
 
     for (const r of src) {
-      const brandId = await idFor("brand", { name: safe(r.Marca) }, t);
-      const modelId = await idFor(
-        "model",
-        { brand_id: brandId, name: safe(r.Model) },
+      const brandName = safe(r.Marca);
+      const brandId = await idFor(
+        "brand",
+        { name: brandName, slug: slugOf(brandName) },
         t,
       );
+
+      const modelName = safe(r.Model);
+      const modelSlug = slugOf(`${brandName}-${modelName}`);
+      const modelId = await idFor(
+        "model",
+        { brand_id: brandId, name: modelName, slug: modelSlug },
+        t,
+      );
+
+      const seasonName = safe(r.Sezon, "ALL");
+      const seasonId = await idFor(
+        "season",
+        { name: seasonName, slug: slugOf(seasonName) },
+        t,
+      );
+
+      const w = Number(r.Latime) || null;
+      const h = Number(r.Inaltime) || null;
+      const d = Number(r.Diametru);
+      const dimSlug = slugOf(`${w}${h ? "-" + h : ""}-r${d}`);
       const dimId = await idFor(
         "dimension",
         {
-          width_mm: Number(r.Latime) || null,
-          height_pct: Number(r.Inaltime) || null,
-          rim_diam_in: Number(r.Diametru),
+          width_mm: w,
+          height_pct: h,
+          rim_diam_in: d,
+          slug: dimSlug,
         },
         t,
       );
-      const seasonId = await idFor("season", { name: safe(r.Sezon, "ALL") }, t);
 
       const typ = r.TipProdus.includes("SH")
         ? "SH"
@@ -232,11 +256,22 @@ async function flush(raw: any[], src: any[], bucketOf: (d: number) => number) {
         [brandId, modelId, slug, title],
       );
 
+      let tyre_type;
+      if (r.TipProdus.includes("SH")) {
+        tyre_type = "SH";
+      } else if (r.TipProdus.toLowerCase().includes("Reconstruite")) {
+        tyre_type = "REMOULD";
+      } else if (r.TipProdus.toLowerCase().includes("Resapate")) {
+        tyre_type = "RETREAD";
+      } else {
+        tyre_type = "NEW";
+      }
+
       await t.none(
         `INSERT INTO product_tyres
            (product_id,dimension_id,season_id,dot_year,
-            load_index,speed_index,depth_bucket)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
+        load_index,speed_index,depth_bucket, tyre_type, usage_destination, km_garantee, tread_percentage_remaining, budget_bucket, tread_depth_mm, axel_position, quality_rgba)
+         VALUES ($1,$2,$3,$4,$5,$6,$7, $8,$9,$10,$11,$12,$13,$14,$15)
          ON CONFLICT (product_id) DO NOTHING`,
         [
           productId,
@@ -246,8 +281,48 @@ async function flush(raw: any[], src: any[], bucketOf: (d: number) => number) {
           Number(r.IndiceIncarcare) || null,
           r.IndiceViteza,
           buck,
+          tyre_type,
+          r.Destinatie,
+          Number(r.NumarKm) || null,
+          r.ProfilRamas
+            ? Number(String(r.ProfilRamas).replace(/%$/, ""))
+            : null,
+          r.tipBuget ? r.tipBuget.toUpperCase() : null,
+          depth || null,
+          r.Axa ? r.Axa.toUpperCase() : null,
+          r.rgb_calitate || null,
         ],
       );
+
+      if (r.descriere_json) {
+        await t.none(
+          `
+    INSERT INTO product_copy
+      (product_id, hero_json, pricing_json, photo_json, description_json, overlay_s, overlay_l, legacy_slug)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    ON CONFLICT (product_id) DO NOTHING`,
+          [
+            productId,
+            r.ExplicatiiProdusPrincipal
+              ? JSON.parse(r.ExplicatiiProdusPrincipal)[0]
+              : null,
+            r.explicatii_detalii_produs_pret
+              ? JSON.parse(r.explicatii_detalii_produs_pret)[0][0]
+              : null,
+            r.explicatii_detalii_produs_foto
+              ? JSON.parse(r.explicatii_detalii_produs_foto)[0][0]
+              : null,
+            JSON.parse(r.descriere_json),
+            r.text_imagine_foto_mic
+              ? JSON.parse(r.text_imagine_foto_mic)[0][0]
+              : null,
+            r.text_imagine_foto_mare
+              ? JSON.parse(r.text_imagine_foto_mare)[0][0]
+              : null,
+            r.LinkSiteVechi,
+          ],
+        );
+      }
 
       offers.push({
         product_id: productId,

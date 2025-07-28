@@ -12,6 +12,7 @@ model brand {
   name    String    @unique
   model   model[]
   product product[]
+  slug    String    @unique
 }
 
 model dimension {
@@ -20,6 +21,7 @@ model dimension {
   height_pct    Int?
   rim_diam_in   Decimal         @db.Decimal(4, 1)
   product_tyres product_tyres[]
+  slug          String          @unique
 
   @@unique([width_mm, height_pct, rim_diam_in])
 }
@@ -30,8 +32,21 @@ model model {
   name     String
   brand    brand?    @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   product  product[]
+  slug     String    @unique
 
-  @@unique([brand_id, name])
+  @@unique([brand_id, slug])
+}
+
+model offer_meta {
+  offer_id                BigInt    @id
+  warehouse               String?
+  promo_price_numeric     Decimal?  @db.Decimal(10, 2)
+  promo_price_valid_until DateTime? @db.Timestamptz(6)
+  b2b_only                Boolean?  @default(false)
+  partner_prices_json     Json? // JSON array of partner_tier_id and price_numeric pairs
+  offer                   offer     @relation(fields: [offer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([warehouse], map: "offer_meta_warehouse_idx")
 }
 
 model offer {
@@ -51,6 +66,7 @@ model offer {
   sales_order_item_sales_order_item_seller_id_offer_idTooffer sales_order_item[] @relation("sales_order_item_seller_id_offer_idTooffer")
   sales_order_item_sales_order_item_offer_idTooffer           sales_order_item[] @relation("sales_order_item_offer_idTooffer")
   partner_price                                               partner_price[]
+  offer_meta                                                  offer_meta?
 
   @@unique([seller_id, id], map: "offer_seller_id_id_uidx")
   @@unique([seller_id, sku_external, product_id])
@@ -91,7 +107,8 @@ model product {
   order_rank                                                  Int?                 @default(0)
 
   // relations
-  tags product_tag[]
+  tags         product_tag[]
+  product_copy product_copy?
 }
 
 model product_fullwheels {
@@ -135,6 +152,14 @@ model product_tyres {
   product      product    @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   season       season?    @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  tyre_type                  String? // e.g. "SH", "ECO", "NEW", "REMOULD"
+  usage_destination          String? // e.g. "PASSENGER", "SUV", "VAN", "TRUCK", "AGRICULTURE", "INDUSTRIAL"
+  km_garantee                Int? // e.g. 50000
+  tread_percentage_remaining Int? // e.g. 80
+  budget_bucket              String? // e.g. "BUDGET", "MID", "PREMIUM"
+  tread_depth_mm             Decimal? @db.Decimal(3, 1) // e.g. 8.0
+  axel_position              String? // e.g. "FRONT", "REAR", "ALL"
+
   // EU-label
   eu_efficiency_class EuLabelClass? @map("eff_class") // A–E
   eu_wet_grip_class   EuLabelClass? @map("grip_class") // A–E
@@ -142,8 +167,23 @@ model product_tyres {
   eu_noise_class      Int? // 1–3
 
   quality_grade QualityGrade? // I, II …
+  quality_rgba  String? // e.g. "255,0,0" for red
 
   @@unique([dimension_id, dot_year, depth_bucket, season_id, product_id], map: "uq_product_tyre_natural")
+}
+
+model product_copy {
+  product_id       BigInt    @id
+  hero_json        Json? // JSON object with hero image and other metadata
+  pricing_json     Json? // JSON object with pricing details
+  photo_json       Json? // JSON object with photo URLs
+  description_json Json? // JSON object with description details
+  overlay_s        Json? // JSON object with overlay details
+  overlay_l        Json? // JSON object with overlay details
+  legacy_slug      String?
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  product product @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model sales_order {
@@ -172,6 +212,7 @@ model season {
   id            Int             @id @default(autoincrement())
   name          String          @unique
   product_tyres product_tyres[]
+  slug          String          @unique
 }
 
 model seller {

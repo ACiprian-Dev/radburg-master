@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { ValidationPipe } from "@nestjs/common";
 
 import { AppModule } from "./app.module";
 import { BigIntInterceptor } from "./common/interceptors/bigint.interceptor";
@@ -7,6 +8,18 @@ import { BigIntInterceptor } from "./common/interceptors/bigint.interceptor";
 // backend/src/main.ts
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  /* ───────────── GLOBAL PIPES ───────────── */
+  app.useGlobalPipes(
+    new ValidationPipe({
+      /** convert query/body/path strings → the types declared in your DTOs  */
+      transform: true,
+      /** strip un-whitelisted properties from the payloads (good hygiene)  */
+      whitelist: true,
+      /** throw 400 instead of 500 when validation fails                   */
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   app.useGlobalInterceptors(new BigIntInterceptor());
 

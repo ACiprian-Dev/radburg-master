@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
 
 import { LookupModule } from "./lookup/lookup.module";
+import { TyresModule } from "./tyres/tyres.module";
 
 @Module({
-  imports: [LookupModule],
-  exports: [LookupModule],
+  imports: [LookupModule, TyresModule],
+  exports: [LookupModule, TyresModule],
 })
 export class CatalogModule {
   // This module currently does not provide any services or exports.
