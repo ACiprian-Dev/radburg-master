@@ -1,4 +1,4 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Query } from "@nestjs/common";
 import { ApiTags, ApiOkResponse } from "@nestjs/swagger";
 
 import { LookupService } from "./lookup.service";
@@ -31,8 +31,8 @@ export class LookupController {
     description: "Returns a list of distinct tyre heights.",
     type: Array,
   })
-  findTyreHeights() {
-    return this.lookupService.findTyreHeights();
+  findTyreHeights(@Query("width_mm") width_mm?: string) {
+    return this.lookupService.findTyreHeights(width_mm);
   }
 
   @Get("tyre-rim-diameters")
@@ -40,8 +40,11 @@ export class LookupController {
     description: "Returns a list of distinct tyre rim diameters.",
     type: Array,
   })
-  findTyreRimDiameter() {
-    return this.lookupService.findTyreRimDiameter();
+  findTyreRimDiameter(
+    @Query("width_mm") width_mm?: string,
+    @Query("height_pct") height_pct?: string,
+  ) {
+    return this.lookupService.findTyreRimDiameter(width_mm, height_pct);
   }
 
   @Get("seasons")

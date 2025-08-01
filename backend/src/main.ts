@@ -37,6 +37,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api", app, document); // UI at /api
 
+  /* --- CORS --- */
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3001",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true, // allow cookies to be sent with requests
+  });
+
   console.log("Nest application is starting... on port 3000");
   await app.listen(3000);
 }

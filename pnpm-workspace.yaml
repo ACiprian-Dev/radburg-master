@@ -1,5 +1,5 @@
 packages:
-  - backend      # ← new
-  - frontend     # ← add when you scaffold it
+  - 'backend'      # ← new
+  - 'frontend'     # ← add when you scaffold it
   # or keep a mono-folder if you prefer
   # - packages/*
